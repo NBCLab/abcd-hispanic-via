@@ -1,0 +1,5 @@
+There are 11879 unique participant IDs and 18450 total responses in the Vancouver Acculturation Questionnaire.
+There are 8871 unique participant IDs and 12175 total responses who completed at least half the questions in the Vancouver Acculturation Questionnaire.
+There are 11879 unique participant IDs and 11879 total responses in the Demographic Questionnaire.
+There are 1578 unique Latinx participant IDs and 1578 Latinx total responses in the Demographic Questionnaire.
+There are 1376 unique Latinx participant IDs and 1950 Latinx total responses who completed at least half the questions in the Vancouver Acculturation Questionnaire.
