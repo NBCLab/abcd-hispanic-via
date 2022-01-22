@@ -1,12 +1,12 @@
 import os
 import os.path as op
-import pandas as pd
 import subprocess
-from nilearn import masking
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from nilearn import masking
 
 project_directory = '/home/data/abcd/abcd-hispanic-via/'
 derivative_directory = op.join(project_directory, 'dset/derivatives/fmriprep_post-process_Cluster1+Cluster2+Cluster3+Cluster4+Cluster5+Cluster6')

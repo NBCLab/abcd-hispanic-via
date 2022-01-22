@@ -1,11 +1,10 @@
 import os
 import os.path as op
-from nilearn import plotting
-from nilearn import masking
 from glob import glob
+
 import nibabel as nib
 import numpy as np
-
+from nilearn import masking, plotting
 
 project_directory = '/home/data/abcd/abcd-hispanic-via'
 results_dir = op.join(project_directory, 'dset', 'derivatives', 'fmriprep_post-process_Cluster1+Cluster2+Cluster3+Cluster4+Cluster5+Cluster6')
