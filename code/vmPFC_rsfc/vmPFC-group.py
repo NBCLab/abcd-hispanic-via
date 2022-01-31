@@ -93,6 +93,7 @@ def subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file):
         for x in subj_briks_files
     ]
     mean_fd = np.mean(fd)
+    mean_fd = np.around(mean_fd, 4)
     with open(subj_mean_fd_file, "w") as fo:
         fo.write(f"{mean_fd}")
 
@@ -130,10 +131,21 @@ def writearg_2sample(setA, setB, twottest_args_fn):
 
 
 def writecov_1sample(onettest_cov_fn):
+    cov_labels = [
+        "subject",
+        "age_p",
+        "age_c",
+        "site",
+        "FD",
+        "education",
+        "income",
+        "nativity_p",
+        "nativity_c",
+        "gender_p",
+        "gender_c",
+    ]
     with open(onettest_cov_fn, "w") as fo:
-        fo.write(
-            "subject age_p age_c site FD education income nativity_p nativity_c gender_p gender_c\n"
-        )
+        fo.write("{}\n".format(" ".join(cov_labels)))
 
 
 def append2cov_1sample(subject, mean_fd, behavioral_df, onettest_cov_fn):
@@ -151,10 +163,22 @@ def append2cov_1sample(subject, mean_fd, behavioral_df, onettest_cov_fn):
     nativity_c = sub_df["demo_origin_v2"].values[0]
     gender_p = sub_df["demo_prnt_gender_id_v2"].values[0]
     gender_c = sub_df["demo_gender_id_v2"].values[0]
+    cov_variables = [
+        subject,
+        age_p,
+        age_c,
+        site,
+        mean_fd,
+        education,
+        income,
+        nativity_p,
+        nativity_c,
+        gender_p,
+        gender_c,
+    ]
+    cov_variables_str = [str(x) for x in cov_variables]
     with open(onettest_cov_fn, "a") as fo:
-        fo.write(
-            f"{subject} {age_p} {age_c} {site} {mean_fd} {education} {income} {nativity_p} {nativity_c} {gender_p} {gender_c}\n"
-        )
+        fo.write("{}\n".format(" ".join(cov_variables_str)))
 
 
 def run_ttest(bucket_fn, mask_fn, covariates_file, args_file):
@@ -178,7 +202,7 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_jobs):
         ),
         sep="\t",
     )
-    subjects = participants_df["participant_id"].tolist()[:10]
+    subjects = participants_df["participant_id"].tolist()
 
     # Define directories
     if session is not None:
