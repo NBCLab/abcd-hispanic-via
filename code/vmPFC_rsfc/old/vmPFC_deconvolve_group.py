@@ -100,6 +100,7 @@ rest_briks = sorted(
     glob(op.join(bids_dir, "derivatives", derivative, "sub-*", "ses-*", "*", "*_z+tlrc.HEAD"))
 )
 
+# Remove mask and brik files from exclude
 for i, row in runs_exclude_df.iterrows():
     tmp_run = row["bids_name"].replace("run-0", "run-").strip("_bold")
     sub = tmp_run.split("_")[0]
@@ -126,6 +127,7 @@ for i, row in runs_exclude_df.iterrows():
         print("removing {}".format(op.basename(tmp_run_brik_fn)))
         rest_briks.remove(tmp_run_brik_fn)
 
+# Remove subject with siblings
 final_mask_list = rest_masks
 for i in final_mask_list:
     tmp_sub = i.split("/")[-4]
@@ -145,6 +147,7 @@ with open(op.join(out_dir, "rest-group-briks.txt"), "w") as fo:
     for tmp_brik_fn in final_brik_list:
         fo.write("{}\n".format(tmp_brik_fn))
 
+# Create group mask
 grp_mask = masking.intersect_masks(final_mask_list, threshold=0.5)
 mask_fn = op.join(out_dir, "rest-group-mask.nii.gz")
 nib.save(grp_mask, mask_fn)
@@ -157,6 +160,7 @@ label_bucket_dict = {
     "Cluster5": 13,
     "Cluster6": 16,
 }
+# Calculate subject level average connectivity matrix
 for label in label_bucket_dict.keys():
     for ppt in pid:
         tmp_out_dir = op.join(bids_dir, "derivatives", derivative, ppt, "ses-baselineYear1Arm1")
@@ -229,6 +233,7 @@ for label in label_bucket_dict.keys():
                     bucket_fn=tmp_bucket_fn, bucket_list=tmp_bucket_list
                 )
                 os.system(cmd)
+
 
 for label in label_bucket_dict.keys():
     os.makedirs(op.join(out_dir, "rest-group-{label}".format(label=label)), exist_ok=True)
