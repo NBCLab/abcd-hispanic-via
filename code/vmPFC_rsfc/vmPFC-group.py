@@ -47,6 +47,12 @@ def _get_parser():
         required=True,
         help="CPUs",
     )
+    parser.add_argument(
+        "--n_rois",
+        dest="n_rois",
+        required=True,
+        help="Total number od ROIs",
+    )
     return parser
 
 
@@ -190,10 +196,12 @@ def run_ttest(bucket_fn, mask_fn, covariates_file, args_file):
     os.system(cmd)
 
 
-def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_jobs):
+def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_rois, n_jobs):
     """Run group analysis workflows on a given dataset."""
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
     space = "MNI152NLin2009cAsym"
+    n_rois = int(n_rois)
+    n_jobs = int(n_jobs)
     # Load important tsv files
     participants_df = pd.read_csv(op.join(dset, "participants.tsv"), sep="\t")
     behavioral_df = pd.read_csv(
@@ -244,14 +252,7 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_jobs):
         group_mask = masking.intersect_masks(clean_mask_files, threshold=0.5)
         nib.save(group_mask, group_mask_fn)
 
-    label_bucket_dict = {
-        "ROI1": 1,
-        "ROI2": 4,
-        "ROI3": 7,
-        "ROI4": 10,
-        "ROI5": 13,
-        "ROI6": 16,
-    }
+    label_bucket_dict = {f"ROI{x+1}": x * 3 + 1 for x in range(n_rois)}
     for label in label_bucket_dict.keys():
         # Conform onettest_args_fn and twottest_args_fn
         onettest_args_fn = op.join(
