@@ -6,7 +6,7 @@ from glob import glob
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from nilearn import masking
+from nilearn import image, masking
 
 
 def _get_parser():
@@ -56,13 +56,20 @@ def _get_parser():
     return parser
 
 
+def conn_resample(roi_in, roi_out, template):
+
+    cmd = f"3dresample \
+            -prefix {roi_out} \
+            -master {template} \
+            -inset {roi_in}"
+    print(f"\t\t\t{cmd}", flush=True)
+    os.system(cmd)
+
+
 def remove_ouliers(mriqc_dir, briks_files, mask_files):
 
     runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
-    runs_to_exclude = (
-        runs_to_exclude_df["bids_name"].str.replace("run-0", "run-").str.rstrip("_bold")
-    ).tolist()
-
+    runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
     prefixes_tpl = tuple(runs_to_exclude)
 
     clean_briks_files = [x for x in briks_files if not op.basename(x).startswith(prefixes_tpl)]
@@ -82,7 +89,7 @@ def subj_ave_roi(subj_briks_files, subjAve_roi_briks_file, roi_idx):
         print(f"\t{cmd}", flush=True)
         os.system(cmd)
     else:
-        cmd = f"3dcalc -a {subj_roi_briks_files} -expr 'a' -prefix {subjAve_roi_briks_file}"
+        cmd = f"3dcalc -a {subj_roi_briks_files[0]} -expr 'a' -prefix {subjAve_roi_briks_file}"
         print(f"\t{cmd}", flush=True)
         os.system(cmd)
 
@@ -125,7 +132,7 @@ def get_setAB(subject, subjAve_roi_briks_file, participants_df, setA, setB):
     elif sub_df["CProb2"].values[0] >= 0.8:
         setB.append("{sub_id} {brik_id}\n".format(sub_id=subject, brik_id=brik_id))
     else:
-        print(sub_df)
+        pass
     return setA, setB
 
 
@@ -187,12 +194,12 @@ def append2cov_1sample(subject, mean_fd, behavioral_df, onettest_cov_fn):
         fo.write("{}\n".format(" ".join(cov_variables_str)))
 
 
-def run_ttest(bucket_fn, mask_fn, covariates_file, args_file):
+def run_ttest(bucket_fn, mask_fn, covariates_file, args_file, n_jobs):
     cmd = f"3dttest++ -prefix {bucket_fn} \
             -mask {mask_fn} \
             -Covariates {covariates_file} \
-            -Clustsim -@ < {args_file}"
-    print(f"\t{cmd}", flush=True)
+            -Clustsim {n_jobs} -@ < {args_file}"
+    print(f"\t\t{cmd}", flush=True)
     os.system(cmd)
 
 
@@ -232,8 +239,14 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_rois, n_jobs):
     )
 
     # Remove outliers using MRIQC metrics
+    print(len(briks_files), len(mask_files))
     clean_briks_files, clean_mask_files = remove_ouliers(mriqc_dir, briks_files, mask_files)
+    print(len(clean_briks_files), len(clean_mask_files))
     assert len(clean_briks_files) == len(clean_mask_files)
+    # clean_briks_nm = [op.basename(x).split("_space-")[0] for x in clean_briks_files]
+    # clean_mask_nm = [op.basename(x).split("_space-")[0] for x in clean_mask_files]
+    # clean_briks_tpl = tuple(clean_briks_nm)
+    # mask_not_brik = [x for x in clean_mask_nm if not x.startswith(clean_briks_tpl)]
 
     # Write group file
     clean_briks_fn = op.join(
@@ -249,74 +262,108 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_rois, n_jobs):
         rsfc_group_dir, f"sub-group_{session}_task-rest_space-{space}_desc-brain_mask.nii.gz"
     )
     if not op.exists(group_mask_fn):
+        template_mask_fn = image.load_img(clean_mask_files[0])
+        affine, shape = template_mask_fn.affine, template_mask_fn.shape
+        for clean_mask_file in clean_mask_files:
+            clean_mask_img = image.load_img(clean_mask_file)
+            if clean_mask_img.shape[0] != 81:
+                print("resampling")
+                clean_res_mask_img = image.resample_img(
+                    clean_mask_img, affine, shape[:3], interpolation="nearest"
+                )
+                nib.save(clean_res_mask_img, clean_mask_file)
+
         group_mask = masking.intersect_masks(clean_mask_files, threshold=0.5)
         nib.save(group_mask, group_mask_fn)
-
     label_bucket_dict = {f"ROI{x+1}": x * 3 + 1 for x in range(n_rois)}
     for label in label_bucket_dict.keys():
+        label_dir = op.join(rsfc_group_dir, label)
+        os.makedirs(label_dir, exist_ok=True)
         # Conform onettest_args_fn and twottest_args_fn
         onettest_args_fn = op.join(
-            rsfc_group_dir, f"sub-group_{session}_task-rest_desc-1SampletTest{label}_args.txt"
+            label_dir, f"sub-group_{session}_task-rest_desc-1SampletTest{label}_args.txt"
         )
         twottest_args_fn = op.join(
-            rsfc_group_dir, f"sub-group_{session}_task-rest_desc-2SampletTest{label}_args.txt"
+            label_dir, f"sub-group_{session}_task-rest_desc-2SampletTest{label}_args.txt"
         )
-        arg_1sample = False
-        cov_1sample = False
         if not op.exists(onettest_args_fn):
             writearg_1sample(onettest_args_fn)
-            arg_1sample = True
 
         # Conform onettest_cov_fn and twottest_cov_fn
         onettest_cov_fn = op.join(
-            rsfc_group_dir, f"sub-group_{session}_task-rest_desc-1SampletTest{label}_cov.txt"
+            label_dir, f"sub-group_{session}_task-rest_desc-1SampletTest{label}_cov.txt"
         )
         if not op.exists(onettest_cov_fn):
             writecov_1sample(onettest_cov_fn)
-            cov_1sample = True
 
         setA = []
         setB = []
         # Calculate subject and ROI level average connectivity
+        template = op.join(
+            rsfc_dir,
+            subjects[0],
+            session,
+            "func",
+            f"{subjects[0]}_{session}_task-rest_space-{space}_desc-ave{label}_bucket+tlrc",
+        )
         for subject in subjects:
-            rsfc_subj_dir = op.join(rsfc_dir, subject, session, "func")
-            preproc_subj_dir = op.join(preproc_dir, subject, session, "func")
-            subj_briks_files = [x for x in clean_briks_files if subject in x]
-            assert len(subj_briks_files) > 0
+            if subject in "\t".join(clean_briks_files):
+                rsfc_subj_dir = op.join(rsfc_dir, subject, session, "func")
+                preproc_subj_dir = op.join(preproc_dir, subject, session, "func")
+                subj_briks_files = [x for x in clean_briks_files if subject in x]
+                # assert len(subj_briks_files) > 0
 
-            if "run-" in subj_briks_files[0]:
-                prefix = op.basename(subj_briks_files[0]).split("run-")[0].rstrip("_")
+                if "run-" in subj_briks_files[0]:
+                    prefix = op.basename(subj_briks_files[0]).split("run-")[0].rstrip("_")
+                else:
+                    prefix = op.basename(subj_briks_files[0]).split("space-")[0].rstrip("_")
 
-            subjAve_roi_briks_file = op.join(
-                rsfc_subj_dir,
-                f"{prefix}_space-{space}_desc-ave{label}_bucket",
-            )
-            subj_mean_fd_file = op.join(
-                rsfc_subj_dir,
-                f"{prefix}_meanFD.txt",
-            )
-
-            if not op.exists(f"{subjAve_roi_briks_file}+tlrc.BRIK"):
-                subj_ave_roi(subj_briks_files, subjAve_roi_briks_file, label_bucket_dict[label])
-
-            # Get subject level mean FD
-            mean_fd = subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file)
-
-            # Append subject specific info for onettest_args_fn
-            if (op.exists(onettest_args_fn)) and (arg_1sample):
-                append2arg_1sample(
-                    subject, f"{subjAve_roi_briks_file}+tlrc.BRIK", onettest_args_fn
+                subjAve_roi_briks_file = op.join(
+                    rsfc_subj_dir,
+                    f"{prefix}_space-{space}_desc-ave{label}_bucket",
                 )
+                subjAveRes_roi_briks_file = op.join(
+                    rsfc_subj_dir,
+                    f"{prefix}_space-{space}_desc-ave{label}res_bucket",
+                )
+                subj_mean_fd_file = op.join(
+                    rsfc_subj_dir,
+                    f"{prefix}_meanFD.txt",
+                )
+                if not op.exists(f"{subjAve_roi_briks_file}+tlrc.BRIK"):
+                    subj_ave_roi(
+                        subj_briks_files, subjAve_roi_briks_file, label_bucket_dict[label]
+                    )
 
-            # Get setA and setB to write twottest_args_fn
-            if not op.exists(twottest_args_fn):
+                # Resample
+                subjAve_roi_briks = image.load_img(f"{subjAve_roi_briks_file}+tlrc.BRIK")
+                if subjAve_roi_briks.shape[0] != 81:
+                    if not op.exists(f"{subjAveRes_roi_briks_file}+tlrc.BRIK"):
+                        conn_resample(
+                            f"{subjAve_roi_briks_file}+tlrc",
+                            subjAveRes_roi_briks_file,
+                            template,
+                        )
+                    subjAve_roi_briks_file = subjAveRes_roi_briks_file
+
+                # Get subject level mean FD
+                mean_fd = subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file)
+
+                # Append subject specific info for onettest_args_fn
+                if op.exists(onettest_args_fn):
+                    append2arg_1sample(
+                        subject, f"{subjAve_roi_briks_file}+tlrc.BRIK", onettest_args_fn
+                    )
+
+                # Get setA and setB to write twottest_args_fn
+                # if not op.exists(twottest_args_fn):
                 setA, setB = get_setAB(
                     subject, f"{subjAve_roi_briks_file}+tlrc.BRIK", participants_df, setA, setB
                 )
 
-            # Append subject specific info for onettest_cov_fn
-            if (op.exists(onettest_cov_fn)) and (cov_1sample):
-                append2cov_1sample(subject, mean_fd, behavioral_df, onettest_cov_fn)
+                # Append subject specific info for onettest_cov_fn
+                if op.exists(onettest_cov_fn):
+                    append2cov_1sample(subject, mean_fd, behavioral_df, onettest_cov_fn)
 
         # Write twottest_args_fn
         if not op.exists(twottest_args_fn):
@@ -325,12 +372,12 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_rois, n_jobs):
         # Statistical analysis
         # Whole-brain, one-sample t-tests
         onettest_briks_fn = op.join(
-            rsfc_group_dir,
+            label_dir,
             f"sub-group_{session}_task-rest_desc-1SampletTest{label}_briks",
         )
         # Whole-brain, two-sample t-tests
         twottest_briks_fn = op.join(
-            rsfc_group_dir,
+            label_dir,
             f"sub-group_{session}_task-rest_desc-2SampletTest{label}_briks",
         )
         ttest_briks_files = [onettest_briks_fn, twottest_briks_fn]
@@ -345,6 +392,7 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, n_rois, n_jobs):
                     group_mask_fn,
                     covariates_files[file],
                     args_files[file],
+                    n_jobs,
                 )
 
 
