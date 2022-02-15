@@ -37,13 +37,16 @@ RSFC_DIR="${DERIVS_DIR}/rsfc_c1-c2-c3-c4-c5-c6"
 session="ses-baselineYear1Arm1"
 
 # Run group analysis
+ROIs=("ROI1" "ROI2" "ROI3" "ROI4" "ROI5" "ROI6")
+ROI=${ROIs[${SLURM_ARRAY_TASK_ID}]}
 analysis="python ${CODE_DIR}/vmPFC_rsfc/vmPFC-group.py \
           --dset  ${BIDS_DIR} \
           --mriqc_dir ${MRIQC_DIR} \
           --preproc_dir ${FMRIPREP_DIR} \
           --rsfc_dir  ${RSFC_DIR} \
           --session ${session} \
-          --n_rois 6 \
+          --roi ${ROI} \
+          --n_rois ${#ROIs[@]} \
           --n_jobs ${SLURM_CPUS_PER_TASK}"
 # Setup done, run the command
 echo
