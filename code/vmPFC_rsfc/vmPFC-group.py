@@ -1,6 +1,7 @@
 import argparse
 import os
 import os.path as op
+import string
 from glob import glob
 
 import nibabel as nib
@@ -28,6 +29,12 @@ def _get_parser():
         dest="preproc_dir",
         required=True,
         help="Path to fMRIPrep directory",
+    )
+    parser.add_argument(
+        "--clean_dir",
+        dest="clean_dir",
+        required=True,
+        help="Path to denoising directory",
     )
     parser.add_argument(
         "--rsfc_dir",
@@ -84,20 +91,38 @@ def remove_ouliers(mriqc_dir, briks_files, mask_files):
     return clean_briks_files, clean_mask_files
 
 
-def subj_ave_roi(subj_briks_files, subjAve_roi_briks_file, roi_idx):
-    subj_roi_briks_files = [
-        "{0}'[{1}]'".format(x.split(".HEAD")[0], roi_idx) for x in subj_briks_files
-    ]
-    subj_roi_briks_list = " ".join(subj_roi_briks_files)
+def subj_ave_roi(clean_subj_dir, subj_briks_files, subjAve_roi_briks_file, roi_idx):
+    n_runs = len(subj_briks_files)
+    letters = list(string.ascii_lowercase[0:n_runs])
 
-    if len(subj_roi_briks_files) > 1:
-        cmd = f"3dMean -prefix {subjAve_roi_briks_file} {subj_roi_briks_list}"
-        print(f"\t{cmd}", flush=True)
-        os.system(cmd)
+    subj_roi_briks_files = [
+        "-{0} {1}'[{2}]'".format(letters[idx], x.split(".HEAD")[0], roi_idx)
+        for idx, x in enumerate(subj_briks_files)
+    ]
+    input_str = " ".join(subj_roi_briks_files)
+
+    # Get weights from number of volumes left in the time series
+    weight_lst = []
+    for subj_briks_file in subj_briks_files:
+        prefix = subj_briks_file.split("desc-")[0].rstrip("_")
+        censor_file = op.join(clean_subj_dir, f"{prefix}_censoring*.1D")
+        tr_censor = pd.read_csv(censor_file, header=None)
+        tr_left = len(tr_censor.index[tr_censor[0] == 1].tolist())
+        weight_lst.append(tr_left)
+    # Normalize weights
+    weight_norm_lst = [float(x) / sum(weight_lst) for x in weight_lst]
+
+    # Conform equation (a*w[1]+b*w[2]+...)/n_runs
+    equation = [f"{letters[idx]}*{w}" for idx, w in enumerate(weight_norm_lst)]
+    if n_runs > 1:
+        equation_str = "+".join(equation)
+        exp_str = f"({equation_str})/{n_runs}"
     else:
-        cmd = f"3dcalc -a {subj_roi_briks_files[0]} -expr 'a' -prefix {subjAve_roi_briks_file}"
-        print(f"\t{cmd}", flush=True)
-        os.system(cmd)
+        exp_str = f"{equation[0]}"
+
+    cmd = f"3dcalc {input_str} -expr '{exp_str}' -prefix {subjAve_roi_briks_file}"
+    print(f"\t{cmd}", flush=True)
+    os.system(cmd)
 
 
 def subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file):
@@ -209,7 +234,7 @@ def run_ttest(bucket_fn, mask_fn, covariates_file, args_file, n_jobs):
     os.system(cmd)
 
 
-def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, roi, n_rois, n_jobs):
+def main(dset, mriqc_dir, preproc_dir, clean_dir, rsfc_dir, session, roi, n_rois, n_jobs):
     """Run group analysis workflows on a given dataset."""
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
     space = "MNI152NLin2009cAsym"
@@ -316,6 +341,7 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, roi, n_rois, n_jobs):
         if subject in "\t".join(clean_briks_files):
             rsfc_subj_dir = op.join(rsfc_dir, subject, session, "func")
             preproc_subj_dir = op.join(preproc_dir, subject, session, "func")
+            clean_subj_dir = op.join(clean_dir, subject, session, "func")
             subj_briks_files = [x for x in clean_briks_files if subject in x]
             # assert len(subj_briks_files) > 0
 
@@ -337,7 +363,9 @@ def main(dset, mriqc_dir, preproc_dir, rsfc_dir, session, roi, n_rois, n_jobs):
                 f"{prefix}_meanFD.txt",
             )
             if not op.exists(f"{subjAve_roi_briks_file}+tlrc.BRIK"):
-                subj_ave_roi(subj_briks_files, subjAve_roi_briks_file, roi_bucket_dict[roi])
+                subj_ave_roi(
+                    clean_subj_dir, subj_briks_files, subjAve_roi_briks_file, roi_bucket_dict[roi]
+                )
 
             # Resample
             subjAve_roi_briks = image.load_img(f"{subjAve_roi_briks_file}+tlrc.BRIK")

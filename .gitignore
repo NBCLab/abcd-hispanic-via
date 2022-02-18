@@ -3,6 +3,7 @@
 data/
 
 # ABCD
+scratch/*
 code/abcdclinicaldata*/
 code/dicom2bids/*
 code/fmriprep/*
