@@ -104,8 +104,10 @@ def subj_ave_roi(clean_subj_dir, subj_briks_files, subjAve_roi_briks_file, roi_i
     # Get weights from number of volumes left in the time series
     weight_lst = []
     for subj_briks_file in subj_briks_files:
-        prefix = subj_briks_file.split("desc-")[0].rstrip("_")
-        censor_file = op.join(clean_subj_dir, f"{prefix}_censoring*.1D")
+        prefix = op.basename(subj_briks_file).split("desc-")[0].rstrip("_")
+        censor_files = glob(op.join(clean_subj_dir, f"{prefix}_censoring*.1D"))
+        assert len(censor_files) == 1
+        censor_file = censor_files[0]
         tr_censor = pd.read_csv(censor_file, header=None)
         tr_left = len(tr_censor.index[tr_censor[0] == 1].tolist())
         weight_lst.append(tr_left)
@@ -113,7 +115,7 @@ def subj_ave_roi(clean_subj_dir, subj_briks_files, subjAve_roi_briks_file, roi_i
     weight_norm_lst = [float(x) / sum(weight_lst) for x in weight_lst]
 
     # Conform equation (a*w[1]+b*w[2]+...)/n_runs
-    equation = [f"{letters[idx]}*{w}" for idx, w in enumerate(weight_norm_lst)]
+    equation = [f"{letters[idx]}*{round(w,4)}" for idx, w in enumerate(weight_norm_lst)]
     if n_runs > 1:
         equation_str = "+".join(equation)
         exp_str = f"({equation_str})/{n_runs}"
@@ -252,21 +254,22 @@ def main(dset, mriqc_dir, preproc_dir, clean_dir, rsfc_dir, session, roi, n_rois
 
     # Define directories
     if session is not None:
-        preproc_subjs_dir = op.join(preproc_dir, "*", session, "func")
+        # preproc_subjs_dir = op.join(preproc_dir, "*", session, "func")
         rsfc_subjs_dir = op.join(rsfc_dir, "*", session, "func")
     else:
-        preproc_subjs_dir = op.join(preproc_dir, "*", "func")
+        # preproc_subjs_dir = op.join(preproc_dir, "*", "func")
         rsfc_subjs_dir = op.join(rsfc_dir, "*", "func")
 
     rsfc_group_dir = op.join(rsfc_dir, "group")
     os.makedirs(rsfc_group_dir, exist_ok=True)
 
     # Collect important files
+    print(rsfc_subjs_dir)
     briks_files = sorted(
         glob(op.join(rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-norm_bucketREML+tlrc.HEAD"))
     )
     mask_files = sorted(
-        glob(op.join(preproc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"))
+        glob(op.join(rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"))
     )
 
     # Remove outliers using MRIQC metrics
@@ -298,7 +301,6 @@ def main(dset, mriqc_dir, preproc_dir, clean_dir, rsfc_dir, session, roi, n_rois
         for clean_mask_file in clean_mask_files:
             clean_mask_img = image.load_img(clean_mask_file)
             if clean_mask_img.shape[0] != 81:
-                print("resampling")
                 clean_res_mask_img = image.resample_img(
                     clean_mask_img, affine, shape[:3], interpolation="nearest"
                 )
