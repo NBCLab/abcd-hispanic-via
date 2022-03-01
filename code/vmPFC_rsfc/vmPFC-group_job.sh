@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=vmPFC
-#SBATCH --time=100:00:00
+#SBATCH --time=50:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=30
 #SBATCH --mem-per-cpu=2gb
 #SBATCH --account=iacc_nbc
 #SBATCH --qos=pq_nbc
-#SBATCH --partition=IB_16C_96G
+#SBATCH --partition=IB_40C_512G
 # Outputs ----------------------------------
 #SBATCH --output=/home/data/abcd/abcd-hispanic-via/code/log/%x/%x_%A-%a.out
 #SBATCH --error=/home/data/abcd/abcd-hispanic-via/code/log/%x/%x_%A-%a.err
@@ -36,6 +36,7 @@ CLEAN_DIR="${DERIVS_DIR}/denoising-${afni_ver}"
 RSFC_DIR="${DERIVS_DIR}/rsfc-vmPFC_C1-C2-C3-C4-C5-C6"
 
 session="ses-baselineYear1Arm1"
+group="nonFam"
 
 # Run group analysis
 ROIs=("ROI1" "ROI2" "ROI3" "ROI4" "ROI5" "ROI6")
@@ -47,6 +48,7 @@ analysis="python ${CODE_DIR}/vmPFC_rsfc/vmPFC-group.py \
           --clean_dir ${CLEAN_DIR} \
           --rsfc_dir  ${RSFC_DIR} \
           --session ${session} \
+          --group ${group} \
           --roi ${ROI} \
           --n_rois ${#ROIs[@]} \
           --n_jobs ${SLURM_CPUS_PER_TASK}"
