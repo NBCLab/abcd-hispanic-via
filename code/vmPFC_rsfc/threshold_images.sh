@@ -16,11 +16,10 @@
 pwd; hostname; date
 set -e
 
-analyses_directory=/home/data/abcd/abcd-hispanic-via/dset/derivatives/rsfc_c1-c2-c3-c4-c5-c6/group
+analyses_directory=/home/data/abcd/abcd-hispanic-via/dset/derivatives/rsfc-vmPFC_C1-C2-C3-C4-C5-C6/group
 
 source /home/data/abcd/code/abcd_fmriprep-analysis/env/environment
 
-pval=$(ptoz 0.05 -2) # 0.001
 tests=('1SampletTest' '2SampletTest')
 rois=('ROI1' 'ROI2' 'ROI3' 'ROI4' 'ROI5' 'ROI6')
 for test in ${tests[@]}; do
@@ -28,10 +27,14 @@ for test in ${tests[@]}; do
         # labels=$(3dinfo -label -sb_delim " " ${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-1SampletTest${analysis}_briks+tlrc)
         if [[ ${test} == '1SampletTest' ]]; then
             labels="Group_Zscr"
+            pvoxel=0.0001
+            pval=$(ptoz $pvoxel -2)
         fi
 
         if [[ ${test} == '2SampletTest' ]]; then
             labels="Bicult-Detached_Zscr"
+            pvoxel=0.001
+            pval=$(ptoz $pvoxel -2)
         fi
         
         echo $labels
@@ -45,18 +48,23 @@ for test in ${tests[@]}; do
             stat_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}_briks.CSimA.NN1_2sided.1D
 
             3dAFNItoNIFTI -prefix ${result_file} ${brik_file}\'[$label_count]\'
-            csize=`1dcat ${stat_file}"{16}[6]"`
+            if [[ ${test} == '1SampletTest' ]]; then
+                csize=`1dcat ${stat_file}"{22}[6]"`
+            fi
+            if [[ ${test} == '2SampletTest' ]]; then
+                csize=`1dcat ${stat_file}"{16}[6]"`
+            fi
             echo $csize
 
-            posthr_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}PosP001minextent${csize}_result.nii.gz
-            posthr_neg_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}NegP001minextent${csize}_result.nii.gz
-            posthr_both_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}BothP001minextent${csize}_result.nii.gz
+            posthr_pos_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}PosP${pvoxel}minextent${csize}_result.nii.gz
+            posthr_neg_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}NegP${pvoxel}minextent${csize}_result.nii.gz
+            posthr_both_file=${analyses_directory}/${analysis}/sub-group_ses-baselineYear1Arm1_task-rest_desc-${test}${analysis}BothP${pvoxel}minextent${csize}_result.nii.gz
 
-            cluster --in=${result_file} --thresh=$pval --connectivity=6 --minextent=$csize --no_table --othresh=${posthr_file}
+            cluster --in=${result_file} --thresh=$pval --connectivity=6 --minextent=$csize --no_table --othresh=${posthr_pos_file}
             fslmaths ${result_file} -mul -1 ${result_neg_file}
             cluster --in=${result_neg_file} --thresh=$pval --connectivity=6 --minextent=$csize --no_table --othresh=${posthr_neg_file}
 
-            fslmaths ${posthr_file} -sub ${posthr_neg_file} ${posthr_both_file}
+            fslmaths ${posthr_pos_file} -sub ${posthr_neg_file} ${posthr_both_file}
 
             label_count=$((label_count + 1))
           done

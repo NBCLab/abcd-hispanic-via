@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 from nilearn import masking, plotting
 
-results_dir = "/home/data/abcd/abcd-hispanic-via/dset/derivatives/rsfc_c1-c2-c3-c4-c5-c6/group"
+results_dir = "/home/data/abcd/abcd-hispanic-via/dset/derivatives/rsfc-vmPFC_C1-C2-C3-C4-C5-C6/group"
 analyses = ["ROI1", "ROI2", "ROI3", "ROI4", "ROI5", "ROI6"]
 tests = ["1SampletTest", "2SampletTest"]
 bg_img = "/home/data/cis/templateflow/tpl-MNI152NLin2009cAsym/tpl-MNI152NLin2009cAsym_res-01_desc-brain_T1w.nii.gz"
@@ -27,7 +27,7 @@ for test in tests:
             op.join(
                 results_dir,
                 analysis,
-                f"sub-group_ses-baselineYear1Arm1_task-rest_desc-{test}{analysis}BothP05minextent*_result.nii.gz",
+                f"sub-group_ses-baselineYear1Arm1_task-rest_desc-{test}{analysis}BothP*minextent*_result.nii.gz",
             )
         )
         assert len(img_fns) == 1
