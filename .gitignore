@@ -3,6 +3,7 @@
 data/
 
 # ABCD
+atlas/
 scratch/*
 code/abcdclinicaldata*/
 code/dicom2bids/*

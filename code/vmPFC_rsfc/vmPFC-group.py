@@ -411,9 +411,7 @@ def main(dset, mriqc_dir, preproc_dir, clean_dir, rsfc_dir, session, group, roi,
 
         # Append subject specific info for onettest_args_fn
         if op.exists(onettest_args_fn):
-            append2arg_1sample(
-                subject, f"{subjAve_roi_briks_file}+tlrc.BRIK", onettest_args_fn
-            )
+            append2arg_1sample(subject, f"{subjAve_roi_briks_file}+tlrc.BRIK", onettest_args_fn)
 
         # Get setA and setB to write twottest_args_fn
         # if not op.exists(twottest_args_fn):
@@ -440,9 +438,9 @@ def main(dset, mriqc_dir, preproc_dir, clean_dir, rsfc_dir, session, group, roi,
         roi_dir,
         f"sub-group_{session}_task-rest_desc-2SampletTest{roi}_briks",
     )
-    ttest_briks_files = [onettest_briks_fn, twottest_briks_fn]
+    ttest_briks_files = [twottest_briks_fn, onettest_briks_fn]
     covariates_files = [onettest_cov_fn, onettest_cov_fn]
-    args_files = [onettest_args_fn, twottest_args_fn]
+    args_files = [twottest_args_fn, onettest_args_fn]
 
     for file, ttest_briks_fn in enumerate(ttest_briks_files):
         os.chdir(op.dirname(ttest_briks_fn))

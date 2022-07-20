@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=2gb
 #SBATCH --account=iacc_nbc
 #SBATCH --qos=pq_nbc
-#SBATCH --partition=IB_16C_96G
+#SBATCH --partition=investor
 # Outputs ----------------------------------
 #SBATCH --output=/home/data/abcd/abcd-hispanic-via/code/log/%x/%x-fig_%j.out
 #SBATCH --error=/home/data/abcd/abcd-hispanic-via/code/log/%x/%x-fig_%j.err
