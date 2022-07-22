@@ -6,6 +6,7 @@ data/
 atlas/
 scratch/*
 code/abcdclinicaldata*/
+code/via_complete_latinx.csv
 code/dicom2bids/*
 code/fmriprep/*
 code/mriqc/*
