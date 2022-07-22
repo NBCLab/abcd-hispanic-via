@@ -1,0 +1,196 @@
+TITLE: BII Model;
+DATA:  FILE is ABCD_Accult_OutcomesR2.dat;
+
+VARIABLE: NAMES ARE
+subjectkey
+FamConf
+rel_family_id
+Primary
+CaregiverO
+CaregiverP
+Herit
+US
+ZHerit
+ZUS
+UniOut
+MAH_1
+Mah_p
+MulOut
+Outlier
+Bicult
+CProb1
+CProb2
+C
+site_id_l
+ChildGender
+ParGender
+ParAge
+Education
+Edu_R
+Income
+ChildGen
+ParGen
+COrigin
+MOrigin
+FOrigin
+MGMOrigin
+MGFOrigin
+PGMOrigin
+PGFOrigin
+demo_origin_v2
+demo_biomother_v2
+demo_matgrandm_v2
+demo_matgrandf_v2
+demo_biofather_v2
+demo_patgrandm_v2
+demo_patgrandf_v2
+vancouver_q1_ddn_p
+Missing
+Language
+VIA_q2_p
+VIA_q3_p
+VIA_q4_p
+VIA_q5_p
+VIA_q6_p
+VIA_q7_p
+VIA_q8_p
+VIA_q9_p
+VIA_q10_p
+VIA_q11_p
+VIA_q12_p
+VIA_q13_p
+VIA_q14_p
+VIA_q15_p
+VIA_q16_p
+VIA_q17_p
+asr_perstr_t
+asr_anxdep_t
+asr_withdrawn_t
+asr_somatic_t
+asr_thought_t
+asr_attention_t
+asr_aggressive_t
+asr_rulebreak_t
+asr_intrusive_t
+asr_internal_t
+asr_external_t
+asr_totprob_t
+asr_depress_t
+asr_anxdisord_t
+asr_somaticpr_t
+asr_avoidant_t
+asr_adhd_t
+asr_antisocial_t
+asr_inattention_t
+asr_hyperactive_t
+cbcl_anxdep_t
+cbcl_withdep_t
+cbcl_somatic_t
+cbcl_social_t
+cbcl_thought_t
+cbcl_attention_t
+cbcl_rulebreak_t
+cbcl_aggressive_t
+cbcl_internal_t
+cbcl_external_t
+cbcl_totprob_t
+cbcl_DSM_depress_t
+cbcl_DSM_anxdisord_t
+cbcl_DSM_somaticpr_t
+cbcl_DSM_adhd_t
+cbcl_DSM_opposit_t
+cbcl_DSM_conduct_t
+parent_monitor_q1_y
+parent_monitor_q2_y
+parent_monitor_q3_y
+parent_monitor_q4_y
+parent_monitor_q5_y
+Monitor
+crpbi_parent1_y
+crpbi_parent2_y
+crpbi_parent3_y
+crpbi_parent4_y
+crpbi_parent5_y
+CRPBI_Accept
+fes_youth_q1
+fes_youth_q2
+fes_youth_q3
+fes_youth_q4
+fes_youth_q5
+fes_youth_q6
+fes_youth_q7
+fes_youth_q8
+fes_youth_q9
+FES_Y
+fam_enviro1_p
+fam_enviro2r_p
+fam_enviro3_p
+fam_enviro4r_p
+fam_enviro5_p
+fam_enviro6_p
+fam_enviro7r_p
+fam_enviro8_p
+fam_enviro9r_p
+FES_P
+nihtbx_picvocab_agecorrected
+nihtbx_flanker_agecorrected
+nihtbx_list_agecorrected
+nihtbx_cardsort_agecorrected
+nihtbx_pattern_agecorrected
+nihtbx_picture_agecorrected
+nihtbx_reading_agecorrected
+nihtbx_fluidcomp_agecorrected
+nihtbx_cryst_agecorrected
+nihtbx_totalcomp_agecorrected
+;
+
+USEVARIABLES ARE 
+ParGender Edu_R Income ParGen
+Bicult
+cbcl_anxdep_t
+cbcl_withdep_t
+cbcl_somatic_t
+cbcl_social_t
+cbcl_thought_t
+cbcl_attention_t
+cbcl_rulebreak_t
+cbcl_aggressive_t
+;
+
+MISSING ARE all (-99);
+
+!CLUSTER is site_id_l;
+!CLUSTER is rel_family_id;
+CLUSTER is site_id_l rel_family_id;
+
+!Between = ParGender-Bicult;
+Between = (rel_family_id) ParGender-Bicult;
+
+!USEOBS Primary EQ 1;
+!USEOBS FamConf EQ 0;
+
+!COUNT are cbcl_anxdep_t-cbcl_aggressive_t;
+
+DEFINE:
+ParGen = ParGen-1;
+ParGender = ParGender-1;
+Education = Education-1;
+Income = Income-1;
+
+ANALYSIS:       
+ESTIMATOR IS MLR;  
+!TYPE=Complex;
+!TYPE=TwoLEVEL;
+TYPE=ThreeLEVEL;
+H1ITERATIONS = 10000;
+
+Model:
+%WITHIN%     
+    cbcl_anxdep_t-cbcl_aggressive_t with cbcl_anxdep_t-cbcl_aggressive_t;
+
+%Between rel_family_id%
+    cbcl_anxdep_t-cbcl_aggressive_t ON Bicult ParGender-ParGen;
+
+ 
+OUTPUT:  SAMPSTAT RESIDUAL STANDARDIZED CINTERVAL MODINDICES ;
+

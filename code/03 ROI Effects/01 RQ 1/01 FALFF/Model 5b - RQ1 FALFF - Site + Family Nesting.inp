@@ -1,0 +1,180 @@
+TITLE: BII Model;
+DATA:  FILE is ABCD_Accult_ROI.dat;
+
+VARIABLE: NAMES ARE
+subjectkey
+FamConf
+rel_family_id
+Primary
+CaregiverO
+CaregiverP
+Herit
+US
+ZHerit
+ZUS
+UniOut
+Bicult
+CProb1
+CProb2
+C
+site_id_l
+ChildGender
+ParGender
+ParAge
+Education
+Edu_R
+Income
+ChildGen
+ParGen
+COrigin
+MOrigin
+FOrigin
+MGMOrigin
+MGFOrigin
+PGMOrigin
+PGFOrigin
+demori
+demMat
+demMatGrM
+demMatGrF
+demPat
+demPatGrM
+demPatGrF
+Missing
+Language
+RQ1F_vmPFC3
+RQ1F_insulaDlh
+RQ1F_insulaDrh
+RQ1F_TPJplh
+RQ1F_TPJprh
+RQ1R_vmPFC3
+RQ1R_insulaDlh
+RQ1R_insulaDrh
+RQ1R_TPJplh
+RQ1R_TPJprh
+RQ2F_vmPFC1
+RQ2F_vmPFC2
+RQ2F_vmPFC3
+RQ2F_vmPFC4
+RQ2F_vmPFC5
+RQ2F_vmPFC6
+RQ2F_insulaDlh
+RQ2F_insulaPlh
+RQ2F_insulaVlh
+RQ2F_insulaDrh
+RQ2F_insulaPrh
+RQ2F_insulaVrh
+RQ2F_hippF1lh
+RQ2F_hippF2lh
+RQ2F_hippF3lh
+RQ2F_hippF1rh
+RQ2F_hippF2rh
+RQ2F_hippF3rh
+RQ2F_striaCDlh
+RQ2F_striaCVlh
+RQ2F_striaDLlh
+RQ2F_striaDlh
+RQ2F_striaRlh
+RQ2F_striaVlh
+RQ2F_striaCDrh
+RQ2F_striaCVrh
+RQ2F_striaDLrh
+RQ2F_striaDrh
+RQ2F_striaRrh
+RQ2F_striaVrh
+RQ2F_amy1lh
+RQ2F_amy2lh
+RQ2F_amy3lh
+RQ2F_amy1rh
+RQ2F_amy2rh
+RQ2F_amy3rh
+RQ2F_TPJa
+RQ2F_TPJp
+RQ2R_vmPFC1
+RQ2R_vmPFC2
+RQ2R_vmPFC3
+RQ2R_vmPFC4
+RQ2R_vmPFC5
+RQ2R_vmPFC6
+RQ2R_insulaDlh
+RQ2R_insulaPlh
+RQ2R_insulaVlh
+RQ2R_insulaDrh
+RQ2R_insulaPrh
+RQ2R_insulaVrh
+RQ2R_hippF1lh
+RQ2R_hippF2lh
+RQ2R_hippF3lh
+RQ2R_hippF1rh
+RQ2R_hippF2rh
+RQ2R_hippF3rh
+RQ2R_striaCDlh
+RQ2R_striaCVlh
+RQ2R_striaDLlh
+RQ2R_striaDlh
+RQ2R_striaRlh
+RQ2R_striaVlh
+RQ2R_striaCDrh
+RQ2R_striaCVrh
+RQ2R_striaDLrh
+RQ2R_striaDrh
+RQ2R_striaRrh
+RQ2R_striaVrh
+RQ2R_amy1lh
+RQ2R_amy2lh
+RQ2R_amy3lh
+RQ2R_amy1rh
+RQ2R_amy2rh
+RQ2R_amy3rh
+RQ2R_TPJa
+RQ2R_TPJp
+;
+
+USEVARIABLES ARE 
+ParGender Edu_R Income ParGen
+Bicult
+RQ1F_vmPFC3
+RQ1F_insulaDlh
+RQ1F_insulaDrh
+RQ1F_TPJplh
+RQ1F_TPJprh
+;
+
+MISSING ARE all (-99);
+
+!CLUSTER is site_id_l;
+!CLUSTER is rel_family_id;
+CLUSTER is site_id_l rel_family_id;
+
+!Between = ParGender-Bicult;
+Between = (rel_family_id) Bicult ParGender-ParGen;
+
+!USEOBS Primary EQ 1;
+!USEOBS FamConf EQ 0;
+
+!COUNT are cbcl_anxdep_t-cbcl_aggressive_t;
+
+DEFINE:
+ParGen = ParGen-1;
+ParGender = ParGender-1;
+Education = Education-1;
+Income = Income-1;
+Herit = Herit/7;
+
+ANALYSIS:       
+ESTIMATOR IS MLR;  
+!TYPE=Complex;
+!TYPE=TwoLEVEL;
+TYPE=ThreeLEVEL;
+H1ITERATIONS = 10000;
+
+Model:
+%WITHIN%     
+    RQ1F_vmPFC3-RQ1F_TPJprh WITH RQ1F_vmPFC3-RQ1F_TPJprh;;
+
+%Between rel_family_id%
+    RQ1F_vmPFC3-RQ1F_TPJprh ON Bicult ParGender-ParGen;
+                Bicult ParGender-ParGen with Bicult ParGender-ParGen;
+ 
+OUTPUT:  SAMPSTAT RESIDUAL STANDARDIZED CINTERVAL MODINDICES ;
+

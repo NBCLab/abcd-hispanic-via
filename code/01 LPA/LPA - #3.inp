@@ -1,0 +1,75 @@
+TITLE: BII Model;
+DATA:  FILE is ABCD_Accult_LPA.dat;
+
+VARIABLE: NAMES ARE
+subjectkey
+rel_family_id
+Caregiver
+site_id_l
+ChildGender
+ParGender
+Education
+Income
+ChildGen
+ParGen
+COrigin
+MOrigin
+FOrigin
+MGMOrigin
+MGFOrigin
+PGMOrigin
+PGFOrigin
+D_origin_v2
+D_biomother_v2
+D_matgrandm_v2
+D_matgrandf_v2
+D_biofather_v2
+D_patgrandm_v2
+D_patgrandf_v2
+Language
+VIA_Cult
+Missing
+VIA_q1
+VIA_q2
+VIA_q3
+VIA_q4
+VIA_q5
+VIA_q6
+VIA_q7
+VIA_q8
+VIA_q9
+VIA_q10
+VIA_q11
+VIA_q12
+VIA_q13
+VIA_q14
+VIA_q15
+VIA_q16
+Herit
+US
+ZHerit
+ZUS
+UniOut
+MAH_1
+Mah_p
+MulOut
+Outlier
+;
+
+USEVARIABLES ARE 
+ZHerit
+ZUS
+;
+
+MISSING ARE all (-99);
+
+CLASSES = C(3);
+
+CLUSTER is Site_ID_L;
+
+ANALYSIS:
+TYPE IS MIXTURE COMPLEX;        
+ESTIMATOR IS MLR;  
+
+OUTPUT:  SAMPSTAT RESIDUAL STANDARDIZED CINTERVAL MODINDICES tech4
+tech11 tech14;
